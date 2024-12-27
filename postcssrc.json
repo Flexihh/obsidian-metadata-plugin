@@ -1,0 +1,10 @@
+{
+    "plugins": {
+      "tailwindcss": {},
+      "autoprefixer": {},
+      "postcss-prefix-selector": {
+        "prefix": ".custom-next",
+        "exclude": [".custom-next", ".custom-dialog", ".custom-select"]
+      }
+    }
+  }

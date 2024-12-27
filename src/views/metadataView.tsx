@@ -10,9 +10,7 @@ export class MetadataView extends ItemView {
   private root: Root | null = null;
   private noticeRoot: Root | null = null;
 
-  private toasterEl = document.body.createEl('div', {
-    // cls: 'custom-dialog',
-  });
+  private toasterEl = document.body.createEl('div');
 
   getViewType(): string {
     return VIEW_TYPE_METADATA;
@@ -30,20 +28,22 @@ export class MetadataView extends ItemView {
     this.contentEl.toggleClass('custom-next', true);
     this.root = createRoot(this.contentEl);
     this.root.render(
-      <>
-        <React.StrictMode>
-          <App container={this.contentEl} />
-        </React.StrictMode>
-      </>,
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
     );
 
-    // Use for calling sonner or toaster;
+    // Use for calling sonner or toaster
     this.noticeRoot = createRoot(this.toasterEl);
-    this.noticeRoot.render(<Toaster richColors theme={document.body.hasClass('theme-dark') ? 'dark' : 'light'} />);
+    this.noticeRoot.render(
+      <Toaster 
+        richColors 
+        theme={document.body.hasClass('theme-dark') ? 'dark' : 'light'} 
+      />
+    );
   }
 
   async onunload(): Promise<void> {
-    super.onunload();
     if (this.root) {
       this.root.unmount();
       this.root = null;
@@ -53,5 +53,6 @@ export class MetadataView extends ItemView {
       this.noticeRoot = null;
     }
     this.toasterEl?.detach();
+    await super.onunload();
   }
 }

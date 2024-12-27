@@ -6,11 +6,15 @@
 .idea
 
 # npm
-node_modules
+node_modules/
+dist/
+.vscode/
+.idea
 
 # Don't include the compiled main.js file in the repo.
 # They should be uploaded to GitHub releases instead.
 main.js
+main.js.map
 
 # Exclude sourcemaps
 *.map
@@ -20,3 +24,11 @@ data.json
 
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
+
+
+
+*.code-workspace
+dist-ssr
+*.local
+.yarn/*
+pnpm-lock.yaml
