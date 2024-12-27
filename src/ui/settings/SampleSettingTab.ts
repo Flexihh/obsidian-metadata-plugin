@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import { MetadataPlugin } from '../../main';
+import { MetadataPlugin } from '../../../main';
 
 export class SampleSettingTab extends PluginSettingTab {
     plugin: MetadataPlugin;
