@@ -1,7 +1,7 @@
 import discard from 'postcss-discard';
 import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
-import prefixer from 'postcss-prefix-selector';
+// import prefixer from 'postcss-prefix-selector'; // <-- Zum Testen auskommentiert
 
 const mediaToContainer = (opts = {}) => {
   return {
@@ -43,23 +43,24 @@ export default {
   plugins: [
     tailwindcss,
     autoprefixer,
-    prefixer({
-      prefix: '.custom-next',
-      exclude: ['.custom-next', '.custom-dialog', '.custom-select'],
-
-      // Optional transform callback for case-by-case overrides
-      transform: function (prefix, selector, prefixedSelector, filePath, rule) {
-        if (selector === '.theme-dark' || selector === '.theme-light') {
-          return selector + ' ' + `:is(.custom-dialog,.custom-select, .custom-next)`;
-        } else {
-          return (
-            prefixedSelector +
-            ' ' +
-            `,.custom-dialog ${selector}, .custom-select ${selector}, ${selector}:where(.custom-dialog,.custom-select)`
-          );
-        }
-      },
-    }),
+    // -------------------------------------------------
+    // Zum Testen deaktiviert. Hier NICHT anwenden.
+    // prefixer({
+    //   prefix: '.custom-next',
+    //   exclude: ['.custom-next', '.custom-dialog', '.custom-select'],
+    //   transform: function (prefix, selector, prefixedSelector, filePath, rule) {
+    //     if (selector === '.theme-dark' || selector === '.theme-light') {
+    //       return selector + ' ' + `:is(.custom-dialog,.custom-select, .custom-next)`;
+    //     } else {
+    //       return (
+    //         prefixedSelector +
+    //         ' ' +
+    //         `,.custom-dialog ${selector}, .custom-select ${selector}, ${selector}:where(.custom-dialog,.custom-select)`
+    //       );
+    //     }
+    //   },
+    // }),
+    // -------------------------------------------------
     discard({
       rule: ['html', 'body'],
     }),
