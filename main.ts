@@ -4,6 +4,7 @@ import { MetadataView, VIEW_TYPE_METADATA } from './src/views/metadataView';
 import { SampleSettingTab } from './src/ui/settings/SampleSettingTab';
 import { commands } from './src/commands';
 import './src/global.css';
+import { initializeCache } from './src/metadata/metadata';
 
 export class MetadataPlugin extends Plugin {
     settings: MetadataPluginSettings;
@@ -24,6 +25,9 @@ export class MetadataPlugin extends Plugin {
         this.initializeCommands();
         this.initializeSettings();
         this.initializeEventListeners();
+
+                // Lade und initialisiere den Cache
+                initializeCache();  // Dies ruft die Funktion aus metadata.ts auf
 
         // Add @container class to document body on load
         document.body.toggleClass('@container', true);

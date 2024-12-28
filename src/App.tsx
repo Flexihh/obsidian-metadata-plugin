@@ -3,7 +3,6 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Pencil, Trash2, X, Search, Plus, ChevronUp, ChevronDown, Copy, HelpCircle, Hash, Puzzle, Wrench, ListChecks } from 'lucide-react'
 import { EditDialog } from './components/edit-dialog'
 import { SearchPopover } from './components/search-popover'
@@ -428,7 +427,7 @@ export function App() {
         tag={selectedCategory}
         open={categorySearchOpen}
         onOpenChange={setCategorySearchOpen}
-      />
+      />  
     </div>
   )
 }
