@@ -53,7 +53,7 @@ export default defineConfig(({ command, mode }) => {
             : terser({
                 compress: {
                   defaults: false,
-                  drop_console: ['log', 'info'],
+                  drop_console: [],
                 },
                 mangle: {
                   eval: true,

@@ -1,4 +1,3 @@
-// constants.ts
 /**
  * Zentrale Konstanten für das Metadata Manager Plugin
  */
@@ -8,13 +7,11 @@ export const FILE_FORMATS = ['jpg', 'png', 'tiff'];
 
 // Metadaten-Typen
 export const METADATA_KEYS = [
-  'author',
-  'title',
-  'keywords',
-  'description',
-  'date',
-  'gps',
-  'custom',
+  'dc:subject',
+  'xmpMM:History',
+  'lr:weightedFlatSubject',
+  'lr:hierarchicalSubject',
+  // Weitere bekannte Schlüssel hinzufügen
 ];
 
 // RDF/XML relevante Konstanten

@@ -1,33 +1,38 @@
 /**
- * Persistenter Cache für Metadaten im Metadata Manager Plugin (optional)
+ * Persistenter Cache für Metadaten im Metadata Manager Plugin (obsidian-kompatibel)
  */
 
 import { MetadataCacheEntry } from '../types';
-import * as fs from 'fs';
-import * as path from 'path';
 import { CACHE_CONFIG } from '../config';
+import { App, TFile } from 'obsidian';
 
-const CACHE_FILE_PATH = path.join(__dirname, '../../.cache/metadataCache.json');
+const CACHE_FILE_NAME = '.metadataCache.json';
 
 class PersistentCache {
   private cache: Map<string, MetadataCacheEntry>;
   private maxEntries: number;
   private expirationTime: number; // in Sekunden
+  private app: App;
 
-  constructor() {
+  constructor(app: App) {
     this.cache = new Map();
     this.maxEntries = CACHE_CONFIG.maxEntries;
     this.expirationTime = CACHE_CONFIG.expirationTime;
+    this.app = app;
+
     this.loadCache();
   }
 
   /**
-   * Lädt den Cache aus einer Datei.
+   * Lädt den Cache aus einer Datei im Vault.
    */
-  private loadCache(): void {
-    if (fs.existsSync(CACHE_FILE_PATH)) {
-      const fileContent = fs.readFileSync(CACHE_FILE_PATH, 'utf-8');
+  private async loadCache(): Promise<void> {
+    const cacheFile = this.app.vault.getAbstractFileByPath(CACHE_FILE_NAME) as TFile;
+
+    if (cacheFile) {
+      const fileContent = await this.app.vault.read(cacheFile);
       const parsedCache = JSON.parse(fileContent) as MetadataCacheEntry[];
+
       parsedCache.forEach((entry) => {
         if (new Date(entry.lastUpdated).getTime() > Date.now() - this.expirationTime * 1000) {
           this.cache.set(entry.filePath, entry);
@@ -37,11 +42,17 @@ class PersistentCache {
   }
 
   /**
-   * Speichert den Cache in eine Datei.
+   * Speichert den Cache in einer Datei im Vault.
    */
-  private saveCache(): void {
+  private async saveCache(): Promise<void> {
     const cacheArray = Array.from(this.cache.values());
-    fs.writeFileSync(CACHE_FILE_PATH, JSON.stringify(cacheArray, null, 2), 'utf-8');
+    const cacheFile = this.app.vault.getAbstractFileByPath(CACHE_FILE_NAME) as TFile;
+
+    if (cacheFile) {
+      await this.app.vault.modify(cacheFile, JSON.stringify(cacheArray, null, 2));
+    } else {
+      await this.app.vault.create(CACHE_FILE_NAME, JSON.stringify(cacheArray, null, 2));
+    }
   }
 
   /**
@@ -49,12 +60,12 @@ class PersistentCache {
    * @param key - Der Schlüssel für den Cache (z. B. Dateipfad).
    * @param entry - Der zu speichernde Cache-Eintrag.
    */
-  set(key: string, entry: MetadataCacheEntry): void {
+  async set(key: string, entry: MetadataCacheEntry): Promise<void> {
     if (this.cache.size >= this.maxEntries) {
       this.evictOldest();
     }
     this.cache.set(key, { ...entry, lastUpdated: new Date() });
-    this.saveCache();
+    await this.saveCache();
   }
 
   /**
@@ -69,7 +80,6 @@ class PersistentCache {
     const ageInSeconds = (new Date().getTime() - entry.lastUpdated.getTime()) / 1000;
     if (ageInSeconds > this.expirationTime) {
       this.cache.delete(key);
-      this.saveCache();
       return undefined;
     }
 
@@ -77,12 +87,20 @@ class PersistentCache {
   }
 
   /**
+   * Gibt den gesamten Inhalt des Caches zurück.
+   * @returns Eine Liste mit allen Cache-Einträgen.
+   */
+  getAll(): MetadataCacheEntry[] {
+    return Array.from(this.cache.values());
+  }
+
+  /**
    * Entfernt einen Eintrag aus dem Cache.
    * @param key - Der Schlüssel des zu entfernenden Eintrags.
    */
-  delete(key: string): void {
+  async delete(key: string): Promise<void> {
     this.cache.delete(key);
-    this.saveCache();
+    await this.saveCache();
   }
 
   /**
@@ -102,9 +120,10 @@ class PersistentCache {
 
     if (oldestKey) {
       this.cache.delete(oldestKey);
-      this.saveCache();
     }
   }
 }
 
-export const persistentCache = new PersistentCache();
+export function createPersistentCache(app: App): PersistentCache {
+  return new PersistentCache(app);
+}

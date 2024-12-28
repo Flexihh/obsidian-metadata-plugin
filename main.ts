@@ -3,8 +3,8 @@ import { MetadataPluginSettings, DEFAULT_SETTINGS } from './src/types';
 import { MetadataView, VIEW_TYPE_METADATA } from './src/views/metadataView';
 import { SampleSettingTab } from './src/ui/settings/SampleSettingTab';
 import { commands } from './src/commands';
+import { initializeMetadataSystem } from './src/metadata/initializer';
 import './src/global.css';
-import { initializeCache } from './src/metadata/metadata';
 
 export class MetadataPlugin extends Plugin {
     settings: MetadataPluginSettings;
@@ -26,8 +26,14 @@ export class MetadataPlugin extends Plugin {
         this.initializeSettings();
         this.initializeEventListeners();
 
-                // Lade und initialisiere den Cache
-                initializeCache();  // Dies ruft die Funktion aus metadata.ts auf
+        // Initialisiere das Metadaten-Managementsystem
+        try {
+            console.log('Starte Initialisierung des Metadaten-Managementsystems...');
+            await initializeMetadataSystem(this.app);
+            console.log('Metadaten-Managementsystem erfolgreich initialisiert.');
+        } catch (error) {
+            console.error('Fehler bei der Initialisierung des Metadaten-Managementsystems:', error);
+        }
 
         // Add @container class to document body on load
         document.body.toggleClass('@container', true);

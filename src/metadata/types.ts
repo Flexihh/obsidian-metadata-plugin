@@ -18,10 +18,10 @@ export type MetadataType =
 
 // Cache-Eintrag für Metadaten
 export interface MetadataCacheEntry {
-  filePath: string;
-  fileType: FileType;
-  metadata: Partial<Record<MetadataType, any>>;
-  lastUpdated: Date;
+  filePath: string;          // Pfad zur Datei
+  fileType: string;          // Dateityp (z. B. 'jpg', 'png')
+  metadata: Record<string, any>; // Metadaten der Datei
+  lastUpdated: Date;         // Zeitstempel der letzten Aktualisierung
 }
 
 // Konfiguration für Caching

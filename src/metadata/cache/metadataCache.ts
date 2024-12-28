@@ -1,9 +1,11 @@
 /**
- * In-Memory-Cache für Metadaten im Metadata Manager Plugin
+ * In-Memory-Cache für Metadaten im Metadata Manager Plugin.
  */
 
 import { MetadataCacheEntry } from '../types';
 import { CACHE_CONFIG } from '../config';
+
+
 
 class MetadataCache {
   private cache: Map<string, MetadataCacheEntry>;
@@ -16,23 +18,13 @@ class MetadataCache {
     this.expirationTime = CACHE_CONFIG.expirationTime;
   }
 
-  /**
-   * Fügt einen neuen Eintrag zum Cache hinzu.
-   * @param key - Der Schlüssel für den Cache (z. B. Dateipfad).
-   * @param entry - Der zu speichernde Cache-Eintrag.
-   */
   set(key: string, entry: MetadataCacheEntry): void {
     if (this.cache.size >= this.maxEntries) {
       this.evictOldest();
     }
-    this.cache.set(key, { ...entry, lastUpdated: new Date() });
+    this.cache.set(key, entry);
   }
 
-  /**
-   * Holt einen Eintrag aus dem Cache.
-   * @param key - Der Schlüssel des Eintrags.
-   * @returns Der Cache-Eintrag oder `undefined`, falls nicht vorhanden.
-   */
   get(key: string): MetadataCacheEntry | undefined {
     const entry = this.cache.get(key);
     if (!entry) return undefined;
@@ -46,17 +38,30 @@ class MetadataCache {
     return entry;
   }
 
-  /**
-   * Entfernt einen Eintrag aus dem Cache.
-   * @param key - Der Schlüssel des zu entfernenden Eintrags.
-   */
+  updateCache(filePath: string, fileType: string, metadata: Record<string, any>): void {
+    const existingEntry = this.get(filePath);
+    const updatedEntry: MetadataCacheEntry = {
+      filePath,
+      fileType,
+      metadata,
+      lastUpdated: new Date(),
+    };
+
+    this.set(filePath, existingEntry ? { ...existingEntry, ...updatedEntry } : updatedEntry);
+  }
+
   delete(key: string): void {
     this.cache.delete(key);
   }
 
-  /**
-   * Entfernt den ältesten Eintrag aus dem Cache.
-   */
+  getSnapshot(): Record<string, MetadataCacheEntry> {
+    const snapshot: Record<string, MetadataCacheEntry> = {};
+    this.cache.forEach((value, key) => {
+      snapshot[key] = value;
+    });
+    return snapshot;
+  }
+
   private evictOldest(): void {
     let oldestKey: string | null = null;
     let oldestTime = Infinity;
