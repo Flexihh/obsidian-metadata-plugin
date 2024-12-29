@@ -1,6 +1,6 @@
 import { App, Notice, TFile, Plugin } from 'obsidian';
-import { getFileTypeFromPath } from '../metadata/utils/fileHelpers';
-import { MetadataManager } from '../metadata/api/metadataManager';
+import { getFileTypeFromPath } from '../utils/fileHelpers';
+import { MetadataManager } from '../metadataManager';
 
 interface PluginWithMetadataManager extends Plugin {
     metadataManager: MetadataManager;
@@ -44,7 +44,7 @@ async function showSubjectsForFile(app: App, metadataManager: MetadataManager, f
         }
 
         // Abrufen der `subject`-Metadaten
-        const subjects = await metadataManager.getMetadataTypeByFile(
+        const subjects = await metadataManager.readMetadataFromFile(
             filePath,
             fileType,
             'subject',

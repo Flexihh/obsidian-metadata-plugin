@@ -2,8 +2,8 @@
  * API-Funktion zum Schreiben von Metadaten
  */
 
-import { writeXMP } from '../functions/writeXMP';
-import { metadataCache } from '../cache/metadataCache';
+import { writeXMP } from '../functions/writeMetadata';
+import { metadataCache } from '../functions/cacheMetadata';
 import { isValidFileType, isValidMetadataType } from '../utils/validators';
 
 /**
@@ -30,7 +30,10 @@ export async function write(
     throw new Error(`Unsupported metadata type: ${metadataType}`);
   }
 
-  const metadata = { [metadataType]: value };
+  const metadata = {
+    original: { [metadataType]: value },
+    standardized: { [metadataType]: value }
+  };
 
   // Cache aktualisieren
   if (useCache) {

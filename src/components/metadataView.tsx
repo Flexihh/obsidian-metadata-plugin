@@ -1,9 +1,10 @@
 import { App } from 'obsidian';
 import * as React from 'react';
 import { createRoot, Root } from 'react-dom/client';
-import { Metadata } from '../metadata';
-import { MetadataManager } from '../../src/metadata/api/metadataManager';
-import { getFileTypeFromPath } from '../../src/metadata/utils/fileHelpers';
+import { MetadataComponent } from './metadataComponent';
+import { MetadataManager } from '../metadataManager';
+import { getFileTypeFromPath } from '../utils/fileHelpers';
+import type { FileFormat } from '../types';
 
 export class MetadataView {
     private app: App;
@@ -30,23 +31,19 @@ export class MetadataView {
 
     async render(container: HTMLElement, filePath: string): Promise<void> {
         this.log('Rendering view for path:', filePath);
-        
+
         // Prüfen ob bereits eine Instanz existiert
         const existingContent = container.querySelector('.metadata-content');
         if (existingContent) {
             this.log('Removing existing content');
             existingContent.remove();
         }
-        
+
         this.currentFilePath = filePath;
 
         try {
-            // Dateipfad bereinigen
-            const sanitizedFilePath = this.sanitizeFilePath(filePath);
-            this.log('Sanitized path:', sanitizedFilePath);
-
             // Dateityp ermitteln und validieren
-            const fileType = getFileTypeFromPath(sanitizedFilePath);
+            const fileType: FileFormat = getFileTypeFromPath(filePath) as FileFormat;
             if (!fileType) {
                 throw new Error('Invalid file path: Could not determine file type.');
             }
@@ -54,17 +51,21 @@ export class MetadataView {
 
             // Metadaten abrufen
             this.log('Fetching metadata...');
-            const metadata = await this.metadataManager.getAllMetadata(sanitizedFilePath, fileType);
-            this.log('Full metadata:', metadata);
+            const metadata = await this.metadataManager.readMetadataFromFile(filePath, fileType, true);
 
-            // Subjects extrahieren
-            const subjects = await this.metadataManager.getMetadataTypeByFile(
-                sanitizedFilePath,
-                fileType,
-                'subject',
-                true
-            );
-            this.log('Extracted subjects:', subjects);
+            // Log für detaillierte Metadaten
+            this.log('Metadata object received:', metadata);
+            if (metadata) {
+                this.log('Metadata keys:', Object.keys(metadata.standardized as object));
+                if ((metadata.standardized as any).subject) {
+                    this.log('Subjects found:', (metadata.standardized as any).subject);
+                } else {
+                    this.log('No subjects found in metadata.');
+                }
+            } else {
+                this.log('No metadata received.');
+            }
+
 
             // Container erstellen und React-Komponente rendern
             const metadataContent = document.createElement('div');
@@ -75,13 +76,11 @@ export class MetadataView {
             this.root.render(
                 <React.StrictMode>
                     <ErrorBoundary onError={this.handleError}>
-                        <Metadata 
-                            app={this.app} 
+                        <MetadataComponent
+                            app={this.app}
                             metadata={metadata}
-                            subjects={subjects} 
-                            filePath={sanitizedFilePath}
-                            onError={this.handleError}
-                        />
+                            filePath={filePath}
+                            onError={this.handleError} subjects={[]}                        />
                     </ErrorBoundary>
                 </React.StrictMode>
             );
@@ -115,15 +114,6 @@ export class MetadataView {
             </div>
         `;
         container.appendChild(errorContent);
-    }
-
-    private sanitizeFilePath(filePath: string): string {
-        try {
-            return filePath.split('?')[0].trim();
-        } catch (error) {
-            this.error(`Error sanitizing path "${filePath}":`, error);
-            return filePath;
-        }
     }
 
     unload(): void {

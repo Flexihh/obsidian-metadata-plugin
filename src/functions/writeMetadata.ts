@@ -2,7 +2,7 @@
  * Funktionen zum Schreiben von XMP-Metadaten in Dateien
  */
 
-import { serializeMetadata } from './serializeXMP';
+import { serializeMetadata } from './serializeMetadata';
 import { isValidFileType } from '../utils/validators';
 import * as fs from 'fs';
 

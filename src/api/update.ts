@@ -2,8 +2,8 @@
  * API-Funktion zum Aktualisieren von Metadaten
  */
 
-import { writeXMP } from '../functions/writeXMP';
-import { metadataCache } from '../cache/metadataCache';
+import { writeXMP } from '../functions/writeMetadata';
+import { metadataCache } from '../functions/cacheMetadata';
 import { isValidFileType, isValidMetadataType } from '../utils/validators';
 import { MetadataType } from '../types';
 

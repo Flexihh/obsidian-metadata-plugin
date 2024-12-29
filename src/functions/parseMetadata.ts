@@ -1,4 +1,7 @@
 import { validateMetadata } from '../utils/validators';
+import type { MetadataOriginalKey } from '../types';
+
+type MetadataRecord = Partial<Record<MetadataOriginalKey, unknown>>;
 
 /**
  * Parst ein RDF/XML-Dokument und extrahiert die Metadaten.
@@ -7,7 +10,7 @@ import { validateMetadata } from '../utils/validators';
  * @returns Ein Objekt mit den extrahierten Metadaten.
  * @throws Fehler bei ungültigen RDF/XML-Daten.
  */
-export function parseMetadata(xmlString: string): Record<string, any> {
+export function parseMetadata(xmlString: string): MetadataRecord {
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(xmlString, 'application/xml');
 
@@ -23,16 +26,20 @@ export function parseMetadata(xmlString: string): Record<string, any> {
     return {};
   }
 
-  const metadata: Record<string, any> = {};
+  const metadata: MetadataRecord = {};
+
   Array.from(descriptionElement.children).forEach((child) => {
-    const tagName = child.tagName;
+    const tagName = child.tagName as MetadataOriginalKey;
     const textContent = child.textContent?.trim() || '';
+
+    console.log(`Parsing tag: ${tagName}, value: ${textContent}`);
 
     // Verarbeitung von <rdf:Bag>
     const bag = child.getElementsByTagNameNS(
       'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
       'Bag'
     )[0];
+
     if (bag) {
       const liElements = bag.getElementsByTagName('rdf:li');
       const keywords = Array.from(liElements)

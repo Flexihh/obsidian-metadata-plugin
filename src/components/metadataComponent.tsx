@@ -1,3 +1,5 @@
+// metadataComponent.tsx
+
 import { useState, KeyboardEvent } from 'react'
 import { App } from "obsidian";
 import { cn } from '@/lib/utils'
@@ -5,9 +7,9 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Pencil, Trash2, X, Search, Plus, ChevronUp, ChevronDown, Copy, HelpCircle, Hash, Puzzle, Wrench, ListChecks } from 'lucide-react'
-import { EditDialog } from './components/edit-dialog'
-import { SearchPopover } from './components/search-popover'
-import { SearchDialog } from './components/search-dialog'
+import { EditDialog } from './edit-dialog'
+import { SearchPopover } from './search-popover'
+import { SearchDialog } from './search-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +17,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+
+
+interface StandardizedMetadata {
+  subject: string[];
+}
+
+interface MetadataProps {
+  app: App;
+  metadata: {
+    standardized: StandardizedMetadata;
+  };
+  filePath: string;
+  onError: (error: Error) => void;
+}
+
 
 interface TableRow {
   id: number
@@ -52,6 +69,7 @@ interface MetadataProps {
   }
 
 
+
 const CATEGORIES = [
   { value: 'keywords', label: 'Keywords', icon: Hash },
   { value: 'features', label: 'Funktionen', icon: Puzzle },
@@ -59,7 +77,9 @@ const CATEGORIES = [
   { value: 'requirements', label: 'Anforderungen', icon: ListChecks }
 ]
 
-export function Metadata({ app, subjects }: MetadataProps) {
+export function MetadataComponent({ app, metadata, filePath, onError }: MetadataProps) {
+  const subjects: string[] = Array.isArray(metadata.standardized.subject) ? metadata.standardized.subject : [];
+
   const [rows, setRows] = useState<TableRow[]>([
     {
       id: 1,
@@ -68,14 +88,14 @@ export function Metadata({ app, subjects }: MetadataProps) {
       inputValue: '',
       textContent: ''
     },
-    {  // Spezielle Add Row
+    { // Spezielle Add Row
       id: 0,
       category: '',
       tags: [],
       inputValue: '',
       textContent: ''
     }
-  ])
+  ]);
 
   const handleCategorySelect = (categoryValue: string) => {
     const newId = Math.max(...rows.filter(row => row.id !== 0).map(row => row.id), 0) + 1;

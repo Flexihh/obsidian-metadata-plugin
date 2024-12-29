@@ -1,5 +1,5 @@
 import { App, Command, MarkdownView } from 'obsidian';
-import { SampleModal } from '../ui/modals/SampleModal';
+import { SampleModal } from '../components/SampleModal';
 
 export const openSampleModalCommand: Command = {
     id: 'open-sample-modal-complex',

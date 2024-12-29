@@ -1,21 +1,46 @@
-/**
- * In-Memory-Cache für Metadaten im Metadata Manager Plugin.
- */
-
-import { MetadataCacheEntry } from '../types';
-import { CACHE_CONFIG } from '../config';
-
-
+import {
+  METADATA_KEY_MAPPING,
+  FILE_FORMATS,
+  METADATA_KEYS,
+  VALID_NAMESPACES,
+} from '../constants';
+import { CACHE_CONFIG } from '../config'; 
+import type {
+  FileFormat,
+  MetadataCacheEntry,
+  MetadataStandardKey,
+  MetadataOriginalKey,
+  MetadataNamespace,
+} from '../types';
 
 class MetadataCache {
   private cache: Map<string, MetadataCacheEntry>;
   private maxEntries: number;
-  private expirationTime: number; // in Sekunden
+  private expirationTime: number;
 
   constructor() {
     this.cache = new Map();
-    this.maxEntries = CACHE_CONFIG.maxEntries;
-    this.expirationTime = CACHE_CONFIG.expirationTime;
+    this.maxEntries = CACHE_CONFIG.maxEntries; // Verwendet CACHE_CONFIG
+    this.expirationTime = CACHE_CONFIG.expirationTime; // Verwendet CACHE_CONFIG
+  }
+
+  updateCache(filePath: string, fileType: string, metadata: Record<string, unknown>): void {
+    // Keine externe Validierung mehr
+
+    // Cache-Eintrag erstellen: Nur die Original-Metadaten speichern
+    const updatedEntry: MetadataCacheEntry = {
+      filePath,
+      fileType: fileType as FileFormat,
+      metadata: {
+        original: metadata, // Speichert die originalen Metadaten
+        standardized: { ...metadata }, // Optional: Kopie der Metadaten ohne tiefere Verschachtelung
+      },
+      lastUpdated: new Date(),
+    };
+
+    // Aktualisieren des Cache-Eintrags
+    const existingEntry = this.get(filePath);
+    this.set(filePath, existingEntry ? { ...existingEntry, ...updatedEntry } : updatedEntry);
   }
 
   set(key: string, entry: MetadataCacheEntry): void {
@@ -38,20 +63,12 @@ class MetadataCache {
     return entry;
   }
 
-  updateCache(filePath: string, fileType: string, metadata: Record<string, any>): void {
-    const existingEntry = this.get(filePath);
-    const updatedEntry: MetadataCacheEntry = {
-      filePath,
-      fileType,
-      metadata,
-      lastUpdated: new Date(),
-    };
-
-    this.set(filePath, existingEntry ? { ...existingEntry, ...updatedEntry } : updatedEntry);
-  }
-
   delete(key: string): void {
     this.cache.delete(key);
+  }
+
+  getAllEntries(): MetadataCacheEntry[] {
+    return Array.from(this.cache.values());
   }
 
   getSnapshot(): Record<string, MetadataCacheEntry> {
@@ -60,14 +77,6 @@ class MetadataCache {
       snapshot[key] = value;
     });
     return snapshot;
-  }
-
-  /**
-   * Gibt alle Einträge im Cache zurück.
-   * @returns Eine Liste aller Cache-Einträge.
-   */
-  getAllEntries(): MetadataCacheEntry[] {
-    return Array.from(this.cache.values());
   }
 
   private evictOldest(): void {
