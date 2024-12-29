@@ -62,6 +62,14 @@ class MetadataCache {
     return snapshot;
   }
 
+  /**
+   * Gibt alle Einträge im Cache zurück.
+   * @returns Eine Liste aller Cache-Einträge.
+   */
+  getAllEntries(): MetadataCacheEntry[] {
+    return Array.from(this.cache.values());
+  }
+
   private evictOldest(): void {
     let oldestKey: string | null = null;
     let oldestTime = Infinity;

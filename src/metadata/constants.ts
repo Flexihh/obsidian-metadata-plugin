@@ -14,6 +14,17 @@ export const METADATA_KEYS = [
   // Weitere bekannte Schlüssel hinzufügen
 ];
 
+
+export const METADATA_KEY_MAPPING: Record<string, string> = {
+  'dc:subject': 'subject',
+  'xmpMM:History': 'history',
+  'lr:weightedFlatSubject': 'keywords',
+  'lr:hierarchicalSubject': 'hierarchicalKeywords',
+  // Weitere Schlüssel hinzufügen
+};
+
+
+
 // RDF/XML relevante Konstanten
 export const RDF_ROOT_ELEMENT = 'rdf:RDF';
 export const RDF_DESCRIPTION_ELEMENT = 'rdf:Description';

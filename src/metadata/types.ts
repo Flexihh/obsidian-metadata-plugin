@@ -16,6 +16,12 @@ export type MetadataType =
   | 'gps'
   | 'custom';
 
+
+  export type HybridMetadata = {
+    original: Record<string, any>;
+    standardized: Record<string, any>;
+  };
+
 // Cache-Eintrag für Metadaten
 export interface MetadataCacheEntry {
   filePath: string;          // Pfad zur Datei

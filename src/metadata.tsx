@@ -1,4 +1,5 @@
 import { useState, KeyboardEvent } from 'react'
+import { App } from "obsidian";
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -39,6 +40,18 @@ const getCategoryIcon = (category: string) => {
   }
 };
 
+
+// Props-Interface für Metadata-Komponente
+
+interface MetadataProps {
+
+  app: App; // Obsidian App-Instanz
+  
+  subjects: string[]; // Liste der Keywords oder Subjects
+  
+  }
+
+
 const CATEGORIES = [
   { value: 'keywords', label: 'Keywords', icon: Hash },
   { value: 'features', label: 'Funktionen', icon: Puzzle },
@@ -46,12 +59,12 @@ const CATEGORIES = [
   { value: 'requirements', label: 'Anforderungen', icon: ListChecks }
 ]
 
-export function App() {
+export function Metadata({ app, subjects }: MetadataProps) {
   const [rows, setRows] = useState<TableRow[]>([
     {
       id: 1,
       category: 'Keywords',
-      tags: ['techSpec', 'ddd', 'dd', 'Test'],
+      tags: subjects,
       inputValue: '',
       textContent: ''
     },
@@ -427,7 +440,7 @@ export function App() {
         tag={selectedCategory}
         open={categorySearchOpen}
         onOpenChange={setCategorySearchOpen}
-      />  
+      />
     </div>
   )
 }

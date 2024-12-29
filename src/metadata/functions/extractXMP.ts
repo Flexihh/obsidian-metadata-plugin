@@ -2,6 +2,8 @@
  * Funktionen zum Extrahieren von Metadaten aus Dateien.
  */
 
+import { HybridMetadata } from '../types'; // Importiere den Hybrid-Metadaten-Typ
+import { METADATA_KEY_MAPPING } from '../constants'; // Importiere die Schlüsselzuordnungskonstante
 import { parseMetadata } from './parseXMP';
 import { App, TFile } from 'obsidian';
 
@@ -10,10 +12,10 @@ import { App, TFile } from 'obsidian';
  * Unterstützt die Verarbeitung von Binärdateien wie JPG.
  * @param filePath - Der Pfad zur Datei.
  * @param app - Das Obsidian-App-Objekt.
- * @returns Ein Objekt mit den extrahierten Metadaten.
+ * @returns Ein Objekt mit den extrahierten Metadaten (original und standardisiert).
  * @throws Fehler, falls die Datei nicht lesbar oder ungültig ist oder keine Metadaten gefunden werden.
  */
-export async function extractMetadata(filePath: string, app: App): Promise<Record<string, any>> {
+export async function extractMetadata(filePath: string, app: App): Promise<HybridMetadata> {
   try {
     // Datei im Vault finden
     const file = app.vault.getAbstractFileByPath(filePath) as TFile;
@@ -32,17 +34,40 @@ export async function extractMetadata(filePath: string, app: App): Promise<Recor
     }
 
     // Metadaten parsen
-    const metadata = parseMetadata(xmpData);
+    const originalMetadata = parseMetadata(xmpData);
 
     // Überprüfen, ob Metadaten vorhanden sind
-    if (!metadata || Object.keys(metadata).length === 0) {
+    if (!originalMetadata || Object.keys(originalMetadata).length === 0) {
       throw new Error(`No metadata found in file: ${filePath}`);
     }
 
-    return metadata;
+    // Standardisierte Metadaten erstellen
+    const standardizedMetadata = standardizeMetadata(originalMetadata);
+
+    return {
+      original: originalMetadata,
+      standardized: standardizedMetadata,
+    };
   } catch (error) {
     throw new Error(`Failed to extract metadata from file "${filePath}": ${error.message}`);
   }
+}
+
+/**
+ * Standardisiert Metadaten für eine konsistente Struktur.
+ * @param originalMetadata - Die originalen Metadaten in ihrer ursprünglichen Struktur.
+ * @returns Die standardisierten Metadaten.
+ */
+function standardizeMetadata(originalMetadata: Record<string, any>): Record<string, any> {
+  const standardizedMetadata: Record<string, any> = {};
+
+  for (const [originalKey, standardizedKey] of Object.entries(METADATA_KEY_MAPPING)) {
+    if (originalMetadata[originalKey] !== undefined) {
+      standardizedMetadata[standardizedKey] = originalMetadata[originalKey];
+    }
+  }
+
+  return standardizedMetadata;
 }
 
 /**
@@ -57,12 +82,12 @@ export async function extractSpecificMetadataFromFile(
   keys: string[],
   app: App
 ): Promise<Record<string, any>> {
-  const allMetadata = await extractMetadata(filePath, app);
+  const { standardized } = await extractMetadata(filePath, app);
 
   // Reduziere auf die spezifischen Schlüssel
   return keys.reduce((result, key) => {
-    if (allMetadata[key]) {
-      result[key] = allMetadata[key];
+    if (standardized[key]) {
+      result[key] = standardized[key];
     }
     return result;
   }, {} as Record<string, any>);

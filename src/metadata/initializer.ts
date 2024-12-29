@@ -24,11 +24,11 @@ export async function initializeMetadataSystem(app: App): Promise<void> {
 
   for (const file of files) {
     try {
-      // Metadaten extrahieren
-      const metadata = await extractMetadata(file.path, app);
+      // Hybrid-Metadaten extrahieren (original und standardisiert)
+      const hybridMetadata = await extractMetadata(file.path, app);
 
-      // Cache aktualisieren mit filePath und fileType
-      metadataCache.updateCache(file.path, file.extension, metadata);
+      // Cache aktualisieren mit filePath, fileType und Hybrid-Metadaten
+      metadataCache.updateCache(file.path, file.extension, hybridMetadata);
 
       console.info(`Metadaten für ${file.path} erfolgreich verarbeitet.`);
     } catch (error) {
@@ -41,8 +41,8 @@ export async function initializeMetadataSystem(app: App): Promise<void> {
   // Überprüfung des Caches durch Lesen der Metadaten
   for (const file of files) {
     try {
-      // App-Objekt als vierten Parameter übergeben
-      const cachedMetadata = await read(file.path, file.extension, 'all', app, true);
+      // App-Objekt als zweiten Parameter übergeben
+      const cachedMetadata = await read('all', app, file.path, file.extension, true);
       console.info(`Metadaten im Cache für ${file.path}:`, cachedMetadata);
     } catch (error) {
       console.error(`Fehler beim Lesen der Metadaten für ${file.path}:`, error);

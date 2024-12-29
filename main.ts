@@ -1,30 +1,28 @@
-import { Plugin, WorkspaceLeaf, Notice } from 'obsidian';
+import { Plugin, TFile, Notice } from 'obsidian';
 import { MetadataPluginSettings, DEFAULT_SETTINGS } from './src/types';
-import { MetadataView, VIEW_TYPE_METADATA } from './src/views/metadataView';
+import { MetadataView } from './src/views/metadataView'; // Geänderte MetadataView für Inline-Rendering
 import { SampleSettingTab } from './src/ui/settings/SampleSettingTab';
 import { commands } from './src/commands';
 import { initializeMetadataSystem } from './src/metadata/initializer';
+import { MetadataManager } from './src/metadata/api/metadataManager';
+import { registerShowFileSubjectsCommand } from './src/commands/showSubjectsCommand';
 import './src/global.css';
 
-export class MetadataPlugin extends Plugin {
+export default class MetadataPlugin extends Plugin {
     settings: MetadataPluginSettings;
-
-    constructor(app: any, manifest: any) {
-        super(app, manifest);
-        console.log('MetadataPlugin constructor called');
-        console.log('App container (constructor):', (this.app as any).container || 'No container available');
-    }
+    metadataManager: MetadataManager; // Instanz des MetadataManagers
+    private observer: MutationObserver | null = null; // Observer für DOM-Änderungen
 
     async onload() {
         console.log('MetadataPlugin loading...');
-        console.log('App container (onload):', (this.app as any).container || 'No container available');
 
-        this.initializeViews();
-        this.initializeRibbonIcons();
-        this.initializeStatusBar();
-        this.initializeCommands();
+        // Initialisiere den MetadataManager
+        this.metadataManager = new MetadataManager(this.app);
+        console.log('MetadataManager initialized.');
+
         this.initializeSettings();
-        this.initializeEventListeners();
+        this.initializeCommands();
+        this.setupImageObserver();
 
         // Initialisiere das Metadaten-Managementsystem
         try {
@@ -35,49 +33,82 @@ export class MetadataPlugin extends Plugin {
             console.error('Fehler bei der Initialisierung des Metadaten-Managementsystems:', error);
         }
 
-        // Add @container class to document body on load
-        document.body.toggleClass('@container', true);
         console.log('MetadataPlugin loaded successfully.');
     }
 
-    private initializeViews() {
-        console.log('Initializing views...');
-        this.registerView(
-            VIEW_TYPE_METADATA,
-            (leaf: WorkspaceLeaf) => {
-                console.log('Registering MetadataView for leaf:', {
-                    id: (leaf as any).id || 'No ID available',
-                    containerEl: (leaf as any).containerEl || 'No container element',
-                    parent: (leaf as any).parent || 'No parent available',
-                });
-                return new MetadataView(leaf);
+    setupImageObserver() {
+        console.log('Setting up DOM observer for images...');
+        this.observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node instanceof HTMLImageElement) {
+                            this.attachMetadataView(node);
+                        }
+                    });
+                }
             }
-        );
-    }
-
-    private initializeRibbonIcons() {
-        console.log('Adding ribbon icons...');
-        
-        // Metadata view icon
-        this.addRibbonIcon('info', 'Open metadata view', () => {
-            console.log('Metadata view ribbon icon clicked.');
-            this.openMetadataView();
         });
 
-        // Sample plugin icon
-        const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', () => {
-            new Notice('This is a notice!');
-            console.log('Sample plugin ribbon icon clicked.');
-        });
-        ribbonIconEl.addClass('my-plugin-ribbon-class');
-        console.log('Ribbon icons added successfully.');
+        this.observer.observe(document.body, { childList: true, subtree: true });
+        console.log('DOM observer for images set up successfully.');
     }
 
-    private initializeStatusBar() {
-        console.log('Initializing status bar...');
-        const statusBarItemEl = this.addStatusBarItem();
-        statusBarItemEl.setText('Status Bar Text');
-        console.log('Status bar initialized with text:', 'Status Bar Text');
+    attachMetadataView(imageElement: HTMLImageElement) {
+        const container = imageElement.parentElement;
+        if (!container || container.querySelector('.metadata-view-container')) {
+            return; // Metadaten-Ansicht bereits vorhanden
+        }
+
+        // Extrahiere den Dateipfad aus dem `src`-Attribut des Bildes
+        const filePath = imageElement.getAttribute('src');
+        if (!filePath) {
+            console.warn('Image element has no src attribute:', imageElement);
+            return;
+        }
+
+        // Bereinige den Dateipfad
+        const sanitizedFilePath = this.sanitizeFilePath(filePath);
+
+        // Suche die Datei im Vault
+        const file = this.app.vault.getAbstractFileByPath(sanitizedFilePath);
+        if (!file || !(file instanceof TFile)) {
+            console.warn(`File not found in vault for path: "${sanitizedFilePath}"`);
+            return;
+        }
+
+        const metadataContainer = document.createElement('div');
+        metadataContainer.classList.add('metadata-view-container');
+        container.appendChild(metadataContainer);
+
+        // MetadataView-Rendering
+        const metadataView = new MetadataView(this.app);
+        metadataView.render(metadataContainer, file.path); // Übergebe den Dateipfad
+    }
+
+    /**
+     * Bereinigt den Dateipfad, um ihn relativ zum Vault zu machen.
+     * @param filePath - Der ursprüngliche Dateipfad.
+     * @returns Der bereinigte, relative Pfad.
+     */
+    private sanitizeFilePath(filePath: string): string {
+        try {
+            // Entfernt Präfixe wie `app://` und Query-Parameter
+            const sanitizedPath = filePath.split('?')[0].replace(/^app:\/\/[a-f0-9]+\/Users\/[a-zA-Z0-9_-]+\/obsidian\/vault\//, '');
+            return sanitizedPath;
+        } catch (error) {
+            console.error(`Fehler beim Bereinigen des Dateipfads: "${filePath}"`, error);
+            return filePath;
+        }
+    }
+
+    onunload() {
+        console.log('MetadataPlugin unloading...');
+        if (this.observer) {
+            this.observer.disconnect();
+            this.observer = null;
+        }
+        console.log('MetadataPlugin unloaded successfully.');
     }
 
     private initializeCommands() {
@@ -86,6 +117,9 @@ export class MetadataPlugin extends Plugin {
             console.log('Adding command:', command.name);
             this.addCommand(command);
         });
+
+        // Registriere den neuen Command für die Anzeige der Subjects
+        registerShowFileSubjectsCommand(this);
         console.log('Commands registered successfully.');
     }
 
@@ -94,61 +128,4 @@ export class MetadataPlugin extends Plugin {
         this.addSettingTab(new SampleSettingTab(this.app, this));
         console.log('Settings tab initialized.');
     }
-
-    private initializeEventListeners() {
-        console.log('Registering DOM and interval events...');
-        
-        this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-            console.log('Document click event:', evt);
-        });
-
-        this.registerInterval(
-            window.setInterval(() => console.log('Interval event triggered'), 5 * 60 * 1000)
-        );
-
-        document.body.classList.toggle('container', true);
-        console.log('Event listeners registered.');
-    }
-
-    private openMetadataView() {
-        console.log('Opening metadata view...');
-        const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE_METADATA);
-        if (existing.length) {
-            console.log('Revealing existing metadata view.');
-            this.app.workspace.revealLeaf(existing[0]);
-        } else {
-            console.log('Creating new metadata view.');
-            this.app.workspace.getLeaf(true).setViewState({
-                type: VIEW_TYPE_METADATA,
-            });
-        }
-    }
-
-    onunload() {
-        console.log('MetadataPlugin unloading...');
-
-        // Remove @container class from document body on unload
-        document.body.toggleClass('@container', false);
-        console.log('@container class removed from document body.');
-
-        // Also remove the 'container' class for compatibility
-        document.body.classList.toggle('container', false);
-        console.log('container class removed from document body.');
-
-        console.log('MetadataPlugin unloaded successfully.');
-    }
-
-    async loadSettings() {
-        console.log('Loading plugin settings...');
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-        console.log('Settings loaded:', this.settings);
-    }
-
-    async saveSettings() {
-        console.log('Saving plugin settings...');
-        await this.saveData(this.settings);
-        console.log('Settings saved successfully.');
-    }
 }
-
-export default MetadataPlugin;
