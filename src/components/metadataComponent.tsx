@@ -5,7 +5,7 @@
   import { cn } from '@/lib/utils'
   import { TagBadge } from '@/components/tagBadge'
   import VaultAutosuggest from '@/components/VaultAutosuggest'
-  import TagFileConnectPopover, { TagFileConnectPopoverHandle } from '@/components/tagConnectPopoverComponent'
+  import { TagFileConnectPopoverHandle } from '@/components/tagConnectPopoverComponent'
   import { Textarea } from '@/components/ui/textarea'
   import CategorySubmenu from './CategorySubmenu';
   import {
@@ -18,7 +18,6 @@
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuSeparator,
     DropdownMenuTrigger,
   } from "@/components/ui/dropdown-menu"
   import {
@@ -26,39 +25,48 @@
     convertCategoryRowsToMetadataValues,
     DEFAULT_ADD_ROW
   } from '../utils/converters'
-  import { TableRow, MetadataValues } from '../types' 
+  import { TableRow, MetadataValues,Action,MetadataPlugin} from '../types' 
 
   interface MetadataProps {
     app: App;
-    metadata: MetadataValues;  // Die initialen Metadaten
+    plugin: MetadataPlugin;  // Neu hinzugefügt
+    metadata: MetadataValues;
     filePath: string;
-    onChange?: (values: MetadataValues) => void;  // Behalten wir für Updates
+    actions: Action[];
+    onChange?: (values: MetadataValues) => void;
     onError?: (error: Error) => void;
-  }
+}
 
 
 
-  export function MetadataComponent({ 
-    app, 
+  export function MetadataComponent({
+    app,
+    plugin,
     metadata,
-    filePath,
     onChange,
-    onError 
+    actions,
   }: MetadataProps) {
-    // Initialisiere Rows mit den Metadaten
-    const [rows, setRows] = useState<TableRow[]>(() => 
-      convertMetadataValuesToCategoryRows(metadata, CATEGORIES)
-    );
-  
-    // Ref für TagFileConnectPopover
+    const [rows, setRows] = useState<TableRow[]>(() => {
+      const initialRows = convertMetadataValuesToCategoryRows(metadata, CATEGORIES);
+      // Initialisiere die Rows im Plugin
+      plugin.updateRows(initialRows);
+      return initialRows;
+  });
+
     const tagFileConnectRef = useRef<TagFileConnectPopoverHandle>(null);
   
-    // Effect zum Aufrufen des onChange callbacks
+    // Synchronisiere Rows mit dem Plugin wenn sie sich ändern
     useEffect(() => {
-      if (onChange) {
-        const metadataValues = convertCategoryRowsToMetadataValues(rows, CATEGORIES);
-        onChange(metadataValues);
-      }
+        console.log('Rows changed, updating plugin:', rows);
+        plugin.updateRows(rows);
+    }, [rows, plugin]);
+
+    // Wenn sich die Rows ändern, informiere auch den Parent
+    useEffect(() => {
+        if (onChange) {
+            const metadataValues = convertCategoryRowsToMetadataValues(rows, CATEGORIES);
+            onChange(metadataValues);
+        }
     }, [rows, onChange]);
   
     const handleCategorySelect = (categoryValue: string) => {
@@ -79,6 +87,7 @@
       ]);
     };
 
+    
     
   
     const handleMoveUp = (rowId: number) => {
@@ -298,20 +307,22 @@
                             </DropdownMenuContent>
                           </DropdownMenu>
                         ) : (
-                          <CategorySubmenu
-                            rowId={row.id}
-                            index={index}
-                            visibleRowsLength={visibleRows.length}
-                            onMoveUp={handleMoveUp}
-                            onMoveDown={handleMoveDown}
-                            onDuplicate={handleDuplicate}
-                            onDelete={handleDeleteRow}
-                            onSearch={openCategorySearch}
-                            isLocked={row.isLocked}
-                            category={row.category}
-                            onToggleLock={toggleLock}
-                          />
-                        )}
+<CategorySubmenu
+  app={app}
+  plugin={plugin} 
+  actions={actions}
+  rowId={row.id}
+  index={index}
+  visibleRowsLength={visibleRows.length}
+  onMoveUp={handleMoveUp}
+  onMoveDown={handleMoveDown}
+  onDuplicate={handleDuplicate}
+  onDelete={handleDeleteRow}
+  onSearch={openCategorySearch}
+  isLocked={row.isLocked}
+  category={row.category}
+  onToggleLock={toggleLock}
+/>                   )}
                       </div>
                       <span className="text-sm text-gray-600 pt-1.5 text-left">
                         {isNewRow ? 'Kategorie' : row.category}

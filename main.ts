@@ -1,22 +1,34 @@
-import { Plugin, TFile } from 'obsidian';
-import { MetadataPluginSettings, DEFAULT_SETTINGS } from './src/types';
-import { MetadataView } from './src/components/metadataView'; // Geänderte MetadataView für Inline-Rendering
-import { SampleSettingTab } from './src/components/SampleSettingTab';
-import { commands } from './src/commands';
+import { App, Plugin, TFile, Command } from 'obsidian';
+import { MetadataPluginSettings, DEFAULT_SETTINGS } from './src/settings';
+import { MetadataPluginSettingTab } from './src/settings';
+import { MetadataView } from './src/components/metadataView';
 import { initializeMetadataSystem } from './src/initializer';
 import { MetadataManager } from './src/metadataManager';
 import { registerShowFileSubjectsCommand } from './src/commands/showSubjectsCommand';
+import createCopyRowCommand from './src/commands';
 import './src/global.css';
+import { TableRow } from './src/types';
+
+// Erweitern des App Interface für TypeScript
+declare module "obsidian" {
+    interface App {
+        commands: {
+            executeCommandById(id: string): boolean;
+            commands: Record<string, Command>;
+        }
+    }
+}
 
 export default class MetadataPlugin extends Plugin {
     settings: MetadataPluginSettings;
-    metadataManager: MetadataManager; // Instanz des MetadataManagers
-    private observer: MutationObserver | null = null; // Observer für DOM-Änderungen
+    metadataManager: MetadataManager;
+    private observer: MutationObserver | null = null;
+    private rows: TableRow[] = [];
+    private activeRowId: number | null = null;
 
     async onload() {
         this.metadataManager = new MetadataManager(this.app);
-
-        this.initializeSettings();
+        await this.initializeSettings();
         this.initializeCommands();
         this.setupImageObserver();
 
@@ -25,6 +37,77 @@ export default class MetadataPlugin extends Plugin {
         } catch (error) {
             console.error('Fehler bei der Initialisierung des Metadaten-Managementsystems:', error);
         }
+    }
+
+    private initializeCommands() {
+        // Actions sind bereits in this.settings.actions verfügbar
+        for (const action of this.settings.actions) {
+            this.addCommand({
+                id: action.command,
+                name: action.name,
+                callback: () => this.executeCommand(action.command),
+                checkCallback: action.showInCommandPalette ? undefined : () => false
+            });
+        }
+    
+        // Copy Row Command mit Factory
+        const copyRowCommand = createCopyRowCommand(
+            () => this.getRows(),
+            () => this.activeRowId
+        );
+        this.addCommand(copyRowCommand);
+    
+        // Register additional commands
+        registerShowFileSubjectsCommand(this);
+    }
+
+    // Execute any command (plugin or system)
+    executeCommand(commandId: string, rowId?: number): boolean {
+        this.setActiveRow(rowId);
+        
+        try {
+            // Get the command from app.commands
+            const command = this.app.commands.commands[commandId];
+            
+            if (!command) {
+                console.warn(`Command ${commandId} not found`);
+                return false;
+            }
+
+            // Execute the command based on its type
+            if (command.callback) {
+                const result = command.callback();
+                return result === true; // Konvertiert undefined/void zu false
+            }
+
+            return false;
+        } catch (error) {
+            console.error(`Failed to execute command ${commandId}:`, error);
+            return false;
+        }
+    }
+
+
+    // Row Management
+    setActiveRow(rowId?: number) {
+        this.activeRowId = rowId ?? null;
+    }
+
+    updateRows(rows: TableRow[]) {
+        this.rows = rows;
+    }
+
+    getRows() {
+        return this.rows;
+    }
+
+    async initializeSettings() {
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        this.addSettingTab(new MetadataPluginSettingTab(this.app, this));
+    }
+
+    async saveSettings() {
+        await this.saveData(this.settings);
     }
 
     setupImageObserver() {
@@ -46,7 +129,7 @@ export default class MetadataPlugin extends Plugin {
     attachMetadataView(imageElement: HTMLImageElement) {
         const container = imageElement.parentElement;
         if (!container || container.querySelector('.metadata-view-container')) {
-            return; // Metadaten-Ansicht bereits vorhanden
+            return;
         }
 
         const filePath = imageElement.getAttribute('src');
@@ -64,8 +147,12 @@ export default class MetadataPlugin extends Plugin {
         metadataContainer.classList.add('metadata-view-container');
         container.appendChild(metadataContainer);
 
-        const metadataView = new MetadataView(this.app);
-        metadataView.render(metadataContainer, file.path); // Übergebe den Dateipfad
+        const metadataView = new MetadataView(
+            this.app,
+            this,
+            this.settings.actions
+        );
+        metadataView.render(metadataContainer, file.path);
     }
 
     private sanitizeFilePath(filePath: string): string {
@@ -82,17 +169,5 @@ export default class MetadataPlugin extends Plugin {
             this.observer.disconnect();
             this.observer = null;
         }
-    }
-
-    private initializeCommands() {
-        commands.forEach(command => {
-            this.addCommand(command);
-        });
-
-        registerShowFileSubjectsCommand(this);
-    }
-
-    private initializeSettings() {
-        this.addSettingTab(new SampleSettingTab(this.app, this));
     }
 }

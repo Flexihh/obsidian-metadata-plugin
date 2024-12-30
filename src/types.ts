@@ -1,5 +1,5 @@
 import { App } from 'obsidian';
-
+import { Plugin as ObsidianPlugin } from 'obsidian';
 
 /**
  * Zentrale Typdefinitionen für das Metadata Manager Plugin
@@ -214,6 +214,7 @@ export interface CategoryDefinition {
 }
 
 export interface TableRow {
+  isLocked: boolean | undefined;
   id: number;
   category: string;
   tags: string[];
@@ -234,4 +235,24 @@ export interface MetadataValues {
   cameraModel?: string;
   gpsLatitude?: string;
   [key: string]: any;
+}
+
+export interface Action {
+  name: string;
+  command: string;
+  isSubmenu: boolean;
+  showInCommandPalette: boolean;
+}
+
+
+
+// MetadataPlugin Interface
+export interface MetadataPlugin extends ObsidianPlugin {
+  settings: {
+      actions: Action[];
+  };
+  executeCommand(commandId: string, rowId?: number): boolean;
+  setActiveRow(rowId?: number): void;
+  updateRows(rows: TableRow[]): void;
+  getRows(): TableRow[];
 }

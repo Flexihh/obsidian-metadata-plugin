@@ -1,22 +1,24 @@
-
-
 import { App } from 'obsidian';
 import * as React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { MetadataComponent } from './metadataComponent';
 import { MetadataManager } from '../metadataManager';
 import { getFileTypeFromPath } from '../utils/fileHelpers';
-import type { FileFormat } from '../types';
+import type { FileFormat, Action,MetadataPlugin } from '../types';
 
 export class MetadataView {
     private app: App;
+    private plugin: MetadataPlugin;
+    private actions: Action[];
     private root: Root | null = null;
     private metadataManager: MetadataManager;
     private currentFilePath: string | null = null;
     private debug: boolean = true;
 
-    constructor(app: App) {
+    constructor(app: App, plugin: MetadataPlugin, actions: Action[]) {
         this.app = app;
+        this.plugin = plugin;
+        this.actions = actions;
         this.metadataManager = new MetadataManager(app);
         this.log('MetadataView initialized');
     }
@@ -34,7 +36,6 @@ export class MetadataView {
     async render(container: HTMLElement, filePath: string): Promise<void> {
         this.log('Rendering view for path:', filePath);
 
-        // Prüfen ob bereits eine Instanz existiert
         const existingContent = container.querySelector('.metadata-content');
         if (existingContent) {
             this.log('Removing existing content');
@@ -44,19 +45,16 @@ export class MetadataView {
         this.currentFilePath = filePath;
 
         try {
-            // Dateityp ermitteln und validieren
             const fileType: FileFormat = getFileTypeFromPath(filePath) as FileFormat;
             if (!fileType) {
                 throw new Error('Invalid file path: Could not determine file type.');
             }
             this.log('Detected file type:', fileType);
 
-            // Metadaten abrufen
             this.log('Fetching metadata...');
             const metadata = await this.metadataManager.readMetadataFromFile(filePath, fileType, true, 'standardized');
             this.log('Full metadata:', metadata);
 
-            // Container erstellen und React-Komponente rendern
             const metadataContent = document.createElement('div');
             metadataContent.classList.add('metadata-content');
             container.appendChild(metadataContent);
@@ -67,6 +65,8 @@ export class MetadataView {
                     <ErrorBoundary onError={this.handleError}>
                         <MetadataComponent
                             app={this.app}
+                            plugin={this.plugin}  // Plugin-Instanz übergeben
+                            actions={this.actions}
                             metadata={metadata}
                             filePath={filePath}
                             onError={this.handleError}
@@ -84,11 +84,9 @@ export class MetadataView {
 
     private handleError = (error: Error): void => {
         this.error('Component error:', error);
-        // Hier könnten weitere Fehlerbehandlungen implementiert werden
     };
 
     private handleRenderError(container: HTMLElement, error: any): void {
-        // Existierende Fehleranzeige entfernen
         const existingError = container.querySelector('.metadata-error');
         if (existingError) {
             existingError.remove();
