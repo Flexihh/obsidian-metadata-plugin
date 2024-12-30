@@ -1,3 +1,5 @@
+
+
 import { App } from 'obsidian';
 import * as React from 'react';
 import { createRoot, Root } from 'react-dom/client';
@@ -51,21 +53,8 @@ export class MetadataView {
 
             // Metadaten abrufen
             this.log('Fetching metadata...');
-            const metadata = await this.metadataManager.readMetadataFromFile(filePath, fileType, true);
-
-            // Log für detaillierte Metadaten
-            this.log('Metadata object received:', metadata);
-            if (metadata) {
-                this.log('Metadata keys:', Object.keys(metadata.standardized as object));
-                if ((metadata.standardized as any).subject) {
-                    this.log('Subjects found:', (metadata.standardized as any).subject);
-                } else {
-                    this.log('No subjects found in metadata.');
-                }
-            } else {
-                this.log('No metadata received.');
-            }
-
+            const metadata = await this.metadataManager.readMetadataFromFile(filePath, fileType, true, 'standardized');
+            this.log('Full metadata:', metadata);
 
             // Container erstellen und React-Komponente rendern
             const metadataContent = document.createElement('div');
@@ -80,7 +69,8 @@ export class MetadataView {
                             app={this.app}
                             metadata={metadata}
                             filePath={filePath}
-                            onError={this.handleError} subjects={[]}                        />
+                            onError={this.handleError}
+                        />
                     </ErrorBoundary>
                 </React.StrictMode>
             );

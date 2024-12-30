@@ -14,14 +14,18 @@ export function standardizeMetadata(
   console.log('Standardisierung gestartet. Eingehende Metadaten:', rawMetadata);
 
   for (const [originalKey, standardizedKey] of Object.entries(METADATA_KEY_MAPPING)) {
-    const typedOriginalKey = originalKey as MetadataOriginalKey;
     const typedStandardKey = standardizedKey as MetadataStandardKey;
 
-    if (rawMetadata[typedOriginalKey] !== undefined) {
-      standardizedMetadata[typedStandardKey] = rawMetadata[typedOriginalKey];
+    // Groß-/Kleinschreibung unabhängige Suche
+    const matchedKey = Object.keys(rawMetadata).find(
+      (key) => key.toLowerCase() === originalKey.toLowerCase()
+    );
+
+    if (matchedKey && rawMetadata[matchedKey] !== undefined) {
+      standardizedMetadata[typedStandardKey] = rawMetadata[matchedKey];
       console.log(
-        `Schlüssel gefunden: '${originalKey}' -> '${standardizedKey}'. Wert:`,
-        rawMetadata[typedOriginalKey]
+        `Schlüssel gefunden: '${matchedKey}' -> '${standardizedKey}'. Wert:`,
+        rawMetadata[matchedKey]
       );
     } else {
       console.log(`Schlüssel nicht gefunden: '${originalKey}'`);

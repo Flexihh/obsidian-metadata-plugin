@@ -5,7 +5,7 @@ type MetadataRecord = Partial<Record<MetadataOriginalKey, unknown>>;
 
 /**
  * Parst ein RDF/XML-Dokument und extrahiert die Metadaten.
- * Unterstützt auch <rdf:Bag> für Listenstrukturen.
+ * Unterstützt auch <rdf:Bag> für Listenstrukturen und <rdf:Alt> für mehrsprachige Einträge.
  * @param xmlString - Der XML-String, der analysiert werden soll.
  * @returns Ein Objekt mit den extrahierten Metadaten.
  * @throws Fehler bei ungültigen RDF/XML-Daten.
@@ -20,6 +20,7 @@ export function parseMetadata(xmlString: string): MetadataRecord {
     throw new Error('Ungültige RDF/XML-Daten: ' + error.textContent);
   }
 
+  // Suchen nach dem ersten <rdf:Description>-Element
   const descriptionElement = xmlDoc.getElementsByTagName('rdf:Description')[0];
   if (!descriptionElement) {
     console.warn('No RDF description element found in XML.');
@@ -28,13 +29,14 @@ export function parseMetadata(xmlString: string): MetadataRecord {
 
   const metadata: MetadataRecord = {};
 
+  // Iterieren über die Kinder von <rdf:Description>
   Array.from(descriptionElement.children).forEach((child) => {
     const tagName = child.tagName as MetadataOriginalKey;
     const textContent = child.textContent?.trim() || '';
 
     console.log(`Parsing tag: ${tagName}, value: ${textContent}`);
 
-    // Verarbeitung von <rdf:Bag>
+    // Verarbeitung von <rdf:Bag> (Listenstrukturen)
     const bag = child.getElementsByTagNameNS(
       'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
       'Bag'
@@ -50,7 +52,24 @@ export function parseMetadata(xmlString: string): MetadataRecord {
       return;
     }
 
-    // Einzelne Werte oder Arrays speichern
+    // Verarbeitung von <rdf:Alt> (mehrsprachige Einträge)
+    const alt = child.getElementsByTagNameNS(
+      'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+      'Alt'
+    )[0];
+
+    if (alt) {
+      const liElements = alt.getElementsByTagName('rdf:li');
+      const defaultLangEntry = Array.from(liElements).find(
+        (li) => li.getAttribute('xml:lang') === 'x-default'
+      );
+      metadata[tagName] = defaultLangEntry
+        ? defaultLangEntry.textContent?.trim() || ''
+        : liElements[0]?.textContent?.trim() || '';
+      return;
+    }
+
+    // Verarbeitung einzelner Werte oder Arrays
     if (metadata[tagName]) {
       if (Array.isArray(metadata[tagName])) {
         (metadata[tagName] as string[]).push(textContent);

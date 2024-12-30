@@ -1,15 +1,27 @@
 // metadataComponent.tsx
 
-import { useState, KeyboardEvent } from 'react'
-import { App } from "obsidian";
+import { useState, KeyboardEvent, useEffect, useRef } from 'react'
+import { App } from "obsidian"
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
+import { TagBadge } from '@/components/tagBadge'
+import VaultAutosuggest from '@/components/VaultAutosuggest'
+import TagFileConnectPopover, { TagFileConnectPopoverHandle } from '@/components/tagConnectPopoverComponent'
 import { Textarea } from '@/components/ui/textarea'
-import { Pencil, Trash2, X, Search, Plus, ChevronUp, ChevronDown, Copy, HelpCircle, Hash, Puzzle, Wrench, ListChecks } from 'lucide-react'
+import {
+  Trash2,
+  X,
+  Search,
+  Plus,
+  ChevronUp,
+  ChevronDown,
+  Copy,
+  HelpCircle,
+  LucideIcon
+} from 'lucide-react'
+import * as LucideIcons from 'lucide-react'
 import { EditDialog } from './edit-dialog'
-import { SearchPopover } from './search-popover'
 import { SearchDialog } from './search-dialog'
+import { CATEGORIES } from '../constants'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,107 +29,70 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-
-
-interface StandardizedMetadata {
-  subject: string[];
-}
+import {
+  convertMetadataValuesToCategoryRows,
+  convertCategoryRowsToMetadataValues,
+  DEFAULT_ADD_ROW
+} from '../utils/converters'
+import { TableRow, MetadataValues } from '../types' 
 
 interface MetadataProps {
   app: App;
-  metadata: {
-    standardized: StandardizedMetadata;
-  };
+  metadata: MetadataValues;  // Die initialen Metadaten
   filePath: string;
-  onError: (error: Error) => void;
+  onChange?: (values: MetadataValues) => void;  // Behalten wir für Updates
+  onError?: (error: Error) => void;
 }
 
-
-interface TableRow {
-  id: number
-  category: string
-  tags: string[]
-  inputValue: string
-  textContent: string
-  isDeleted?: boolean
-}
-
-const getCategoryIcon = (category: string) => {
-  switch (category) {
-    case 'Keywords':
-      return Hash;
-    case 'Funktionen':
-      return Puzzle;
-    case 'Technologien':
-      return Wrench;
-    case 'Anforderungen':
-      return ListChecks;
-    default:
-      return HelpCircle;
-  }
+const getCategoryIcon = (category: string): LucideIcon => {
+  const matchedCategory = CATEGORIES.find((cat) => cat.label === category);
+  return matchedCategory?.icon
+    ? (LucideIcons[matchedCategory.icon as keyof typeof LucideIcons] as LucideIcon)
+    : HelpCircle;
 };
 
-
-// Props-Interface für Metadata-Komponente
-
-interface MetadataProps {
-
-  app: App; // Obsidian App-Instanz
   
-  subjects: string[]; // Liste der Keywords oder Subjects
-  
-  }
 
-
-
-const CATEGORIES = [
-  { value: 'keywords', label: 'Keywords', icon: Hash },
-  { value: 'features', label: 'Funktionen', icon: Puzzle },
-  { value: 'tech', label: 'Technologien', icon: Wrench },
-  { value: 'requirements', label: 'Anforderungen', icon: ListChecks }
-]
-
-export function MetadataComponent({ app, metadata, filePath, onError }: MetadataProps) {
-  const subjects: string[] = Array.isArray(metadata.standardized.subject) ? metadata.standardized.subject : [];
-
-  const [rows, setRows] = useState<TableRow[]>([
-    {
-      id: 1,
-      category: 'Keywords',
-      tags: subjects,
-      inputValue: '',
-      textContent: ''
-    },
-    { // Spezielle Add Row
-      id: 0,
-      category: '',
-      tags: [],
-      inputValue: '',
-      textContent: ''
+export function MetadataComponent({ 
+  app, 
+  metadata,
+  filePath,
+  onChange,
+  onError 
+ }: MetadataProps) {
+  // Initialisiere Rows mit den Metadaten
+  const [rows, setRows] = useState<TableRow[]>(() => 
+    convertMetadataValuesToCategoryRows(metadata, CATEGORIES)
+  );
+ 
+  // Ref für TagFileConnectPopover
+  const tagFileConnectRef = useRef<TagFileConnectPopoverHandle>(null);
+ 
+  // Effect zum Aufrufen des onChange callbacks
+  useEffect(() => {
+    if (onChange) {
+      const metadataValues = convertCategoryRowsToMetadataValues(rows, CATEGORIES);
+      onChange(metadataValues);
     }
-  ]);
-
+  }, [rows, onChange]);
+ 
   const handleCategorySelect = (categoryValue: string) => {
-    const newId = Math.max(...rows.filter(row => row.id !== 0).map(row => row.id), 0) + 1;
-    setRows(prevRows => [
-      ...prevRows.filter(row => row.id !== 0), // Entferne die alte Add Row
-      {  // Füge die neue richtige Zeile hinzu
+    const newId = Math.max(...rows.filter((row) => row.id !== 0).map((row) => row.id), 0) + 1;
+    const selectedCategory = CATEGORIES.find((cat) => cat.value === categoryValue);
+ 
+    setRows((prevRows) => [
+      ...prevRows.filter((row) => row.id !== 0),
+      {
         id: newId,
-        category: CATEGORIES.find(cat => cat.value === categoryValue)?.label || '',
+        category: selectedCategory?.label || '',
         tags: [],
         inputValue: '',
-        textContent: ''
+        textContent: '',
       },
-      {  // Füge die neue Add Row hinzu
-        id: 0,
-        category: '',
-        tags: [],
-        inputValue: '',
-        textContent: ''
-      }
+      DEFAULT_ADD_ROW
     ]);
   };
-
+ 
   const handleMoveUp = (rowId: number) => {
     if (rowId === 0) return; // Ignoriere Add Row
     setRows(prevRows => {
@@ -133,7 +108,7 @@ export function MetadataComponent({ app, metadata, filePath, onError }: Metadata
       return [...newRows, prevRows.find(row => row.id === 0)!];
     });
   };
-
+ 
   const handleMoveDown = (rowId: number) => {
     if (rowId === 0) return; // Ignoriere Add Row
     setRows(prevRows => {
@@ -149,33 +124,33 @@ export function MetadataComponent({ app, metadata, filePath, onError }: Metadata
       return [...newRows, prevRows.find(row => row.id === 0)!];
     });
   };
-
+ 
   const handleDuplicate = (rowId: number) => {
     if (rowId === 0) return; // Verhindere Duplizieren der Add Row
     const rowToDuplicate = rows.find(row => row.id === rowId);
     if (!rowToDuplicate) return;
-
+ 
     const newId = Math.max(...rows.filter(row => row.id !== 0).map(row => row.id), 0) + 1;
     const newRow = {
       ...rowToDuplicate,
       id: newId,
       tags: [...rowToDuplicate.tags]
     };
-
+ 
     setRows(prevRows => [
       ...prevRows.filter(row => row.id !== 0),
       newRow,
       prevRows.find(row => row.id === 0)!
     ]);
   };
-
+ 
   const handleDeleteRow = (rowId: number) => {
     if (rowId === 0) return; // Verhindere Löschen der Add Row
     setRows(rows.map(row =>
       row.id === rowId ? { ...row, isDeleted: true } : row
     ));
   };
-
+ 
   const removeTag = (rowId: number, tagToRemove: string) => {
     if (rowId === 0) return; // Verhindere Tags für Add Row
     setRows(rows.map(row => {
@@ -188,28 +163,28 @@ export function MetadataComponent({ app, metadata, filePath, onError }: Metadata
       return row;
     }));
   };
-
+ 
   const handleInputChange = (rowId: number, value: string) => {
     if (rowId === 0) return; // Verhindere Input für Add Row
     setRows(rows.map(row =>
       row.id === rowId ? { ...row, inputValue: value } : row
     ));
   };
-
+ 
   const handleTextContentChange = (rowId: number, value: string) => {
     if (rowId === 0) return; // Verhindere Text Input für Add Row
     setRows(rows.map(row =>
       row.id === rowId ? { ...row, textContent: value } : row
     ));
   };
-
+ 
   const getAvailableCategories = (currentRowId: number) => {
     const usedCategories = rows
       .filter(row => row.id !== currentRowId && row.id !== 0 && !row.isDeleted)
       .map(row => row.category);
     return CATEGORIES.filter(category => !usedCategories.includes(category.label));
   };
-
+ 
   const handleCategoryChange = (rowId: number, value: string) => {
     if (rowId === 0) {
       handleCategorySelect(value);
@@ -225,51 +200,51 @@ export function MetadataComponent({ app, metadata, filePath, onError }: Metadata
       } : row
     ));
   };
-
+ 
   const addTag = (rowId: number) => {
     if (rowId === 0) return; // Verhindere Tags für Add Row
-    setRows(rows.map(row => {
+    setRows(rows.map((row) => {
       if (row.id === rowId && row.inputValue.trim()) {
         const newTag = row.inputValue.trim();
         return {
           ...row,
-          tags: row.tags.includes(newTag) ? row.tags : [...row.tags, newTag],
-          inputValue: ''
+          tags: row.tags.includes(newTag) ? row.tags : [...row.tags, newTag], // Füge den Tag hinzu
+          inputValue: '', // Leere das Eingabefeld
         };
       }
       return row;
     }));
   };
-
+  
   const handleKeyPress = (rowId: number, e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       addTag(rowId);
     }
   };
-
+ 
   // Zustandsmanagement für Dialoge
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedTag, setSelectedTag] = useState('');
   const [categorySearchOpen, setCategorySearchOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('');
-
+ 
   const openEditDialog = (tag: string) => {
     setSelectedTag(tag);
     setEditDialogOpen(true);
   };
-
+ 
   const openCategorySearch = (category: string) => {
     setSelectedCategory(category);
     setCategorySearchOpen(true);
   };
-
+ 
   const handleTagUpdate = (oldTag: string, newTag: string) => {
     setRows(rows.map(row => ({
       ...row,
       tags: row.tags.map(tag => tag === oldTag ? newTag : tag)
     })));
   };
-
+ 
   // Angepasste Filterlogik
   const normalRows = rows.filter(row => row.id !== 0 && !row.isDeleted);
   const hasUnselectedCategory = normalRows.some(row => row.category === '');
@@ -310,7 +285,9 @@ export function MetadataComponent({ app, metadata, filePath, onError }: Metadata
                             </div>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent className="w-48" align="start">
-                            {CATEGORIES.filter(category => !usedCategories.includes(category.label)).map((category) => (
+                            {CATEGORIES.filter(
+                              (category) => !usedCategories.includes(category.label)
+                            ).map((category) => (
                               <DropdownMenuItem
                                 key={category.value}
                                 onClick={() => handleCategorySelect(category.value)}
@@ -382,43 +359,52 @@ export function MetadataComponent({ app, metadata, filePath, onError }: Metadata
                   {isKeywords ? (
                     <div className="flex flex-wrap items-start gap-2 pt-1.5">
                       {row.tags.map((tag) => (
-                        <Badge
-                          key={tag}
-                          variant="outline"
-                          className="group/badge px-2.5 py-0.5 bg-white hover:bg-gray-100 rounded-full text-sm font-normal text-gray-700 border-gray-200 transition-all flex items-center justify-between"
-                        >
-                          <span>{tag}</span>
-                          <div className="w-0 group-hover/badge:w-[42px] overflow-hidden transition-all duration-200">
-                            <div className="flex items-center justify-end gap-1 ml-0.5">
-                              <Pencil
-                                className="h-3.5 w-3.5 text-gray-400 hover:text-blue-500 cursor-pointer shrink-0 transition-colors"
-                                onClick={() => openEditDialog(tag)}
-                              />
-                              <X
-                                className="h-3.5 w-3.5 text-gray-400 hover:text-red-500 cursor-pointer shrink-0 transition-colors"
-                                onClick={() => removeTag(row.id, tag)}
-                              />
-                            </div>
-                          </div>
-                        </Badge>
+                        <div key={tag} className="relative group">
+<TagBadge
+  key={tag}
+  app={app}
+  tag={tag}
+  onEdit={() => openEditDialog(tag)}
+  onRemove={() => removeTag(row.id, tag)}
+  onConnect={(value) => {
+    console.log(`Connected ${value} to ${tag}`);
+  }}
+/>
+                        </div>
                       ))}
                       <div className="flex-1 min-w-[180px] relative">
-                        <Input
+                        <VaultAutosuggest
+                          app={app}
                           value={row.inputValue}
-                          onChange={(e) => handleInputChange(row.id, e.target.value)}
-                          onKeyPress={(e) => handleKeyPress(row.id, e)}
-                          placeholder={row.tags.length === 0 ? "Tags eingeben..." : ""}
-                          className="h-8 px-2 pl-6 border border-transparent rounded-md text-sm shadow-none hover:border-gray-300 focus:ring-2 focus:ring-gray-400"
+                          onSelect={(value) => handleInputChange(row.id, value)}
+                          onAddTag={(value) => {
+                            handleInputChange(row.id, '')
+                            if (!row.tags.includes(value)) {
+                              setRows(prevRows => prevRows.map(r => 
+                                r.id === row.id 
+                                  ? { ...r, tags: [...r.tags, value], inputValue: '' }
+                                  : r
+                              ))
+                            }
+                          }}
+                          placeholder={row.tags.length === 0 ? 'Tags eingeben...' : ''}
+                          className="h-8 px-2 border border-transparent rounded-md text-sm shadow-none hover:border-gray-300 focus:ring-2 focus:ring-gray-400"
                         />
-                        <div className="absolute left-2 top-1/2 -translate-y-1/2">
-                          <SearchPopover
-                            category={row.category}
-                            onSearch={(term) => {
-                              console.log(`Quick search for ${term} in ${row.category}`);
-                            }}
-                          />
-                        </div>
                       </div>
+                      <TagFileConnectPopover
+                        ref={tagFileConnectRef}
+                        app={app}
+                        onSelect={(value) => {
+                          if (!row.tags.includes(value)) {
+                            setRows(prevRows => prevRows.map(r => 
+                              r.id === row.id 
+                                ? { ...r, tags: [...r.tags, value] }
+                                : r
+                            ))
+                          }
+                        }}
+                        className="h-8 px-2 border border-gray-200 rounded-md text-sm shadow-none"
+                      />
                     </div>
                   ) : (
                     <div className="group relative flex items-center w-full hover:border-gray-300 focus-within:border-gray-300 transition-all">
@@ -428,14 +414,14 @@ export function MetadataComponent({ app, metadata, filePath, onError }: Metadata
                         placeholder={
                           row.category
                             ? `${row.category} eingeben...`
-                            : "Erst Eigenschaft auswählen..."
+                            : 'Erst Eigenschaft auswählen...'
                         }
                         className={cn(
-                          "w-full resize-none bg-transparent text-sm px-2 py-1.5 outline-none",
-                          "border-none shadow-none",
-                          "focus:ring-2 focus:ring-gray-400 min-h-[28px]",
-                          "placeholder:opacity-0 group-hover:placeholder:opacity-60 focus:placeholder:opacity-60 transition-opacity",
-                          row.textContent ? "opacity-100" : "opacity-0 group-hover:opacity-60 focus:opacity-60"
+                          'w-full resize-none bg-transparent text-sm px-2 py-1.5 outline-none',
+                          'border-none shadow-none',
+                          'focus:ring-2 focus:ring-gray-400 min-h-[28px]',
+                          'placeholder:opacity-0 group-hover:placeholder:opacity-60 focus:placeholder:opacity-60 transition-opacity',
+                          row.textContent ? 'opacity-100' : 'opacity-0 group-hover:opacity-60 focus:opacity-60'
                         )}
                         disabled={!row.category}
                         rows={1}

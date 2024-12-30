@@ -1,3 +1,5 @@
+// constants.ts
+
 /**
  * Zentrale Konstanten für das Metadata Manager Plugin
  */
@@ -8,14 +10,15 @@ import type {
   MetadataKeyMapping,
   MetadataSpecification,
   MetadataOriginalKey,
-  FormatMetadataType
+  FormatMetadataType,
+  CategoryDefinition,
 } from './types';
 
 // 1. Basis-Definitionen
 // ------------------------
 
 // 1.1 Unterstützte Dateiformate
-export const FILE_FORMATS = ['jpg', 'png', 'tiff'] as const;
+export const FILE_FORMATS = ['jpg','jpeg', 'png', 'tiff'] as const;
 
 // 1.2 Unterstützte Namespaces
 export const METADATA_NAMESPACES: MetadataNamespace = {
@@ -81,8 +84,16 @@ export const METADATA_KEY_MAPPING: MetadataKeyMapping = {
   'xmpRights:WebStatement': 'rightsStatement'
 } as const;
 
+
+
+
+
+
 // 3.2 Alle verfügbaren Metadaten-Keys
 export const METADATA_KEYS = Object.keys(METADATA_KEY_MAPPING) as MetadataOriginalKey[];
+
+
+
 
 // 4. Format-spezifische Metadaten-Spezifikationen
 // ---------------------------------------------
@@ -197,3 +208,65 @@ export const XMP_MARKERS = {
 
 
 export const VIEW_TYPE_METADATA = 'metadata-view';
+
+
+export const CATEGORIES: CategoryDefinition[] = [
+    {
+        value: 'keywords',
+        label: 'Keywords',
+        icon: 'Hash',
+        displayType: 'pills', 
+        placeholder: 'Tags eingeben...',
+        key: ['subject', 'keywords', 'iptcKeywords', 'hierarchicalKeywords']
+    },
+    {
+        value: 'description',
+        label: 'Beschreibung',
+        icon: 'FileText',
+        displayType: 'text',
+        multiline: true,
+        placeholder: 'Beschreibung eingeben...',
+        key: 'description'
+    },
+    {
+        value: 'author',
+        label: 'Autor',
+        icon: 'User',
+        displayType: 'text',
+        placeholder: 'Autor eingeben...',
+        key: 'author'
+    },
+    {
+        value: 'date',
+        label: 'Datum',
+        icon: 'Calendar',
+        displayType: 'date',
+        placeholder: 'Datum auswählen...',
+        key: 'dateTimeOriginal'
+    },
+    {
+        value: 'rights',
+        label: 'Rechte',
+        icon: 'Shield',
+        displayType: 'text',
+        multiline: true,
+        placeholder: 'Rechtehinweise eingeben...',
+        key: 'copyright'
+    },
+    {
+        value: 'camera',
+        label: 'Kamera',
+        icon: 'Camera',
+        displayType: 'text',
+        placeholder: 'Kamera-Details eingeben...',
+        key: 'cameraModel'
+    },
+    {
+        value: 'location',
+        label: 'Standort',
+        icon: 'MapPin',
+        displayType: 'location',
+        placeholder: 'Koordinaten eingeben...',
+        key: 'gpsLatitude'
+    }
+] as const;

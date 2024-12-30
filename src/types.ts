@@ -201,3 +201,37 @@ export const DEFAULT_SETTINGS: MetadataPluginSettings = {
     categories: DEFAULT_CATEGORIES,
     defaultCategory: 'keywords'
 }
+
+
+export interface CategoryDefinition {
+  value: string;
+  label: string;
+  icon: string;
+  displayType: 'pills' | 'text' | 'date' | 'location';
+  multiline?: boolean;
+  placeholder: string;
+  key: string | string[];
+}
+
+export interface TableRow {
+  id: number;
+  category: string;
+  tags: string[];
+  inputValue: string;
+  textContent: string;
+  isDeleted?: boolean;
+}
+
+export interface MetadataValues {
+  subject?: string[];
+  keywords?: string[];
+  iptcKeywords?: string[];
+  hierarchicalKeywords?: string[];
+  description?: string;
+  author?: string;
+  dateTimeOriginal?: string;
+  copyright?: string;
+  cameraModel?: string;
+  gpsLatitude?: string;
+  [key: string]: any;
+}

@@ -83,15 +83,17 @@ export class MetadataManager {
         filePath: string,
         fileType: FileFormat,
         useCache = true,
-        dataFormat: 'original' | 'standardized' = 'standardized' // Default: standardized
+        dataFormat: 'original' | 'standardized' = 'standardized'
     ): Promise<Record<string, unknown>> {
         this.log(`Reading ${dataFormat} metadata from file:`, filePath);
     
         try {
             // Metadaten aus der Datei lesen
-            const metadata = await read(dataFormat, this.app, filePath, fileType, useCache);
-            if (typeof metadata === 'object' && !Array.isArray(metadata)) {
-                return metadata as Record<string, unknown>;
+            const allMetadata = await read(dataFormat, this.app, filePath, fileType, useCache);
+    
+            if (typeof allMetadata === 'object' && !Array.isArray(allMetadata)) {
+                // Gib nur das angeforderte Format zurück
+                return allMetadata[dataFormat] as Record<string, unknown>;
             } else {
                 throw new Error(`Unexpected metadata format for ${dataFormat}`);
             }
