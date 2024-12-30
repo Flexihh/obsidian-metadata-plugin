@@ -9,7 +9,7 @@ interface VaultSearchResult {
 interface VaultAutosuggestProps {
   app: App
   value?: string
-  onSelect: (value: string) => void
+  onSelect: (value: string | null) => void // null für Abwählen
   onAddTag?: (value: string) => void
   placeholder?: string
   className?: string
@@ -32,6 +32,7 @@ const VaultAutosuggest = forwardRef<VaultAutosuggestHandle, VaultAutosuggestProp
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
   const [isFocused, setIsFocused] = useState(false)
+  const [selectedValue, setSelectedValue] = useState<string | null>(null) // Aktuelle Auswahl
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -74,13 +75,22 @@ const VaultAutosuggest = forwardRef<VaultAutosuggestHandle, VaultAutosuggestProp
   }, [value, searchVault, isFocused])
 
   const handleSelect = (selectedValue: string) => {
-    if (onAddTag) {
-      onAddTag(selectedValue)
+    if (selectedValue === selectedValue) {
+      // Abwählen, wenn der gleiche Wert ausgewählt ist
+      setSelectedValue(null)
+      onSelect(null) // Abwählen übergeben
     } else {
-      onSelect(selectedValue)
+      // Neue Auswahl
+      setSelectedValue(selectedValue)
+      if (onAddTag) {
+        onAddTag(selectedValue)
+      } else {
+        onSelect(selectedValue)
+      }
     }
     setResults([])
     setSelectedIndex(-1)
+    setIsOpen(false)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -127,7 +137,7 @@ const VaultAutosuggest = forwardRef<VaultAutosuggestHandle, VaultAutosuggestProp
         <input
           ref={inputRef}
           type="text"
-          value={value}
+          value={selectedValue || value} // Zeigt die aktuelle Auswahl an
           onChange={(e) => onSelect(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
